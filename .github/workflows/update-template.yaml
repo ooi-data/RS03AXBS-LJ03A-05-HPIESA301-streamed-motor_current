@@ -1,0 +1,71 @@
+name: Update from template
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+env:
+  TEMPLATE_REPO: ooi-data/stream_template
+  PYTHON_VERSION: 3.8
+
+jobs:
+  template-update:
+    name: Template Update
+    runs-on: ubuntu-20.04
+    if: github.repository != 'ooi-data/stream_template'
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          # Increase this value to reset cache if environment.yaml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/workflows/update-template.yaml') }}
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          channels: conda-forge,defaults
+          channel-priority: strict
+          show-channel-urls: true
+          auto-activate-base: false
+          use-only-tar-bz2: true
+      - name: Print conda env
+        shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+      - name: Install nodejs
+        shell: bash -l {0}
+        run: |
+          conda install --yes nodejs
+      - name: Install update-template
+        shell: bash -l {0}
+        run: |
+          which npm
+          npm install -g update-template
+      - name: Run update template
+        shell: bash -l {0}
+        run: |
+          which npx
+          npx update-template https://github.com/${{ env.TEMPLATE_REPO }}
+      - name: Commit changes
+        id: auto-commit-action
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: Updating repository from template
+      - name: "Run if changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'true'
+        run: echo "Changes was detected!"
+      - name: "Run if no changes have been detected"
+        if: steps.auto-commit-action.outputs.changes_detected == 'false'
+        run: echo "No changes detected!"

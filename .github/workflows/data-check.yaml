@@ -1,0 +1,73 @@
+name: Data Check
+
+on:
+  push:
+    paths:
+      - "history/request.yaml"
+      - "**/data-check.yaml"
+    branches:
+      - "main"
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+    inputs:
+      testMessage:
+        description: 'Test Commit Message'     
+        required: true
+        default: 'No message here'
+
+env:
+  PYTHON_VERSION: 3.8
+  CONDA_ENV: harvester
+
+jobs:
+  data-check:
+    name: Data Check
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - uses: ooi-data/read-history-status-action@main
+        id: request_history
+        with:
+          file_path: history/request.yaml
+      - name: Setup python
+        uses: actions/setup-python@v1
+        if: ${{ steps.request_history.outputs.status == 'pending'}}
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache conda
+        uses: actions/cache@v2
+        if: ${{ steps.request_history.outputs.status == 'pending'}}
+        env:
+          # Increase this value to reset cache if environment.yaml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yaml') }}
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        if: ${{ steps.request_history.outputs.status == 'pending'}}
+        with:
+          activate-environment: ${{ env.CONDA_ENV }}
+          environment-file: environment.yaml
+          python-version: ${{ env.PYTHON_VERSION }}
+          auto-activate-base: false
+          use-only-tar-bz2: true
+      - name: Print conda env
+        if: ${{ steps.request_history.outputs.status == 'pending'}}
+        shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+      - name: Run data check
+        if: ${{ steps.request_history.outputs.status == 'pending'}}
+        shell: bash -l {0}
+        env:
+          AWS_KEY: ${{ secrets.AWS_KEY }}
+          AWS_SECRET: ${{ secrets.AWS_SECRET }}
+          OOI_USERNAME: ${{ secrets.OOI_USERNAME }}
+          OOI_TOKEN: ${{ secrets.OOI_TOKEN }}
+        run: |
+          python recipe/producer.py --data-check

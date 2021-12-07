@@ -1,0 +1,11 @@
+instrument: Instrument Reference Designator # CE01ISSM-MFD35-02-PRESFA000
+stream:
+  method: Stream method # recovered_host
+  name: Stream reference designator # presf_abc_dcl_tide_measurement_recovered
+assignees: [] # Users to assign downtime issues (optional) [NOT IMPLEMENTED]
+harvest_options:
+  refresh: true # To refresh dataset
+  test: true # To run test pipeline, just prints out response on prefect
+  path: s3://ooi-data # Data bucket url
+workflow_config: # Configuration for data request workflow [NOT IMPLEMENTED]
+  schedule: "0 0 * * *" # daily at midnight (Overridden with refresh is true)

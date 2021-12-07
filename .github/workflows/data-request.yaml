@@ -1,0 +1,57 @@
+name: Data Request
+
+# Request on Aug and Jan by default on refresh
+on:
+  push:
+    paths:
+      - "config.yaml"
+  schedule:
+    - cron: "0 0 1 */7 *"
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: 3.8
+  CONDA_ENV: harvester
+
+jobs:
+  data-request:
+    name: Data Request
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          # Increase this value to reset cache if environment.yaml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yaml') }}
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: ${{ env.CONDA_ENV }}
+          environment-file: environment.yaml
+          python-version: ${{ env.PYTHON_VERSION }}
+          auto-activate-base: false
+          use-only-tar-bz2: true
+      - name: Print conda env
+        shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+      - name: Run producer
+        shell: bash -l {0}
+        env:
+          AWS_KEY: ${{ secrets.AWS_KEY }}
+          AWS_SECRET: ${{ secrets.AWS_SECRET }}
+          OOI_USERNAME: ${{ secrets.OOI_USERNAME }}
+          OOI_TOKEN: ${{ secrets.OOI_TOKEN }}
+        run: |
+          python recipe/producer.py

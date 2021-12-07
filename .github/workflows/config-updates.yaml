@@ -1,0 +1,85 @@
+name: Configuration Update
+
+on:
+  workflow_dispatch:
+    inputs:
+      refresh:
+        description: 'Harvest options for refreshing'     
+        required: true
+        default: 'True'
+      goldcopy:
+        description: 'Harvest options for goldcopy'     
+        required: true
+        default: 'True'
+      test:
+        description: 'Harvest options for test'     
+        required: true
+        default: 'False'
+      debug:
+        description: 'Not commit the changes'     
+        required: false
+        default: 'False'
+      repo:
+        description: 'Specific repo to update'     
+        required: false
+      force:
+        description: 'Force flag to dispatch data request'     
+        required: false
+        default: 'False'
+      from_index:
+        description: 'Only update from ooi-data index'     
+        required: false
+        default: 'False'
+
+env:
+  PYTHON_VERSION: 3.8
+  CONDA_ENV: harvester
+
+jobs:
+  config-update:
+    name: Config Updates
+    runs-on: ubuntu-20.04
+    if: github.repository == 'ooi-data/stream_template'
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          # Increase this value to reset cache if environment.yaml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yaml') }}
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: ${{ env.CONDA_ENV }}
+          environment-file: environment.yaml
+          python-version: ${{ env.PYTHON_VERSION }}
+          auto-activate-base: false
+          use-only-tar-bz2: true
+      - name: Print conda env
+        run: |
+          conda info
+          conda list
+      - name: Run config updates
+        run: |
+          python .ci-helpers/config-updates.py \
+            --refresh ${{ github.event.inputs.refresh }} \
+            --goldcopy ${{ github.event.inputs.goldcopy }} \
+            --test ${{ github.event.inputs.test }} \
+            --debug ${{ github.event.inputs.debug }} \
+            --repo ${{ github.event.inputs.repo }} \
+            --force ${{ github.event.inputs.force }} \
+            --from-index ${{ github.event.inputs.from_index }}
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}

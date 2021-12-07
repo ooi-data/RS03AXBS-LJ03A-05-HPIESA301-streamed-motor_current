@@ -1,0 +1,77 @@
+name: Data Processing
+
+on:
+  push:
+    paths:
+      - "history/request.yaml"
+      - "**/data-process.yaml"
+    branches:
+      - "main"
+  workflow_dispatch:
+    inputs:
+      testMessage:
+        description: 'Test Commit Message'     
+        required: true
+        default: 'No message here'
+
+env:
+  PYTHON_VERSION: 3.8
+  CONDA_ENV: harvester
+  PREFECT_PROJECT: ooi-harvest
+
+jobs:
+  data-process:
+    name: Data Processing
+    runs-on: ubuntu-20.04
+    if: "contains(github.event.head_commit.message, '[success]') || contains(github.event.inputs.testMessage, '[success]')"
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          token: ${{ secrets.GH_PAT }}
+      - name: Setup python
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Login to DockerHub
+        uses: docker/login-action@v1 
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Cache conda
+        uses: actions/cache@v2
+        env:
+          # Increase this value to reset cache if environment.yaml has not changed
+          CACHE_NUMBER: 0
+        with:
+          path: ~/conda_pkgs_dir
+          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yaml') }}
+      - name: Setup miniconda
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: ${{ env.CONDA_ENV }}
+          environment-file: environment.yaml
+          python-version: ${{ env.PYTHON_VERSION }}
+          auto-activate-base: false
+          use-only-tar-bz2: true
+      - name: Print conda env
+        shell: bash -l {0}
+        run: |
+          conda info
+          conda list
+      - name: Run processing pipeline
+        shell: bash -l {0}
+        env:
+          AWS_KEY: ${{ secrets.AWS_KEY }}
+          AWS_SECRET: ${{ secrets.AWS_SECRET }}
+          OOI_USERNAME: ${{ secrets.OOI_USERNAME }}
+          OOI_TOKEN: ${{ secrets.OOI_TOKEN }}
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          # Make prefect dir
+          mkdir ~/.prefect
+          
+          # Login
+          prefect auth login --key ${{ secrets.PREFECT_TOKEN }}
+
+          # Run flow
+          python recipe/pipeline.py --run-flow --prefect-project ${{ env.PREFECT_PROJECT }}
