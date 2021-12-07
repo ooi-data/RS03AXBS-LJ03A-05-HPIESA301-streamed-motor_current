@@ -1,0 +1,5 @@
+data_ready: false
+data_stream: RS03AXBS-LJ03A-05-HPIESA301-streamed-motor_current
+last_request: '2021-12-07T06:20:44.121639Z'
+response: https://raw.githubusercontent.com/ooi-data/RS03AXBS-LJ03A-05-HPIESA301-streamed-motor_current/main/history/response.json
+status: discontinued
