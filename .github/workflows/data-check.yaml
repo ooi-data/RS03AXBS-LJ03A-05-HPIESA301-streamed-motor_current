@@ -28,6 +28,15 @@ jobs:
       - uses: actions/checkout@v2
         with:
           token: ${{ secrets.GH_PAT }}
+      - name: Prevent multiple jobs running in parallel
+        id: conversion_lock
+        uses: softprops/turnstyle@v1
+        with:
+          abort-after-seconds: 3
+          poll-interval-seconds: 2
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: ooi-data/read-history-status-action@main
         id: request_history
         with:
