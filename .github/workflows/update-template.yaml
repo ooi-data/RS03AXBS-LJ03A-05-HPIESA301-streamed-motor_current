@@ -18,43 +18,14 @@ jobs:
       - uses: actions/checkout@v2
         with:
           token: ${{ secrets.GH_PAT }}
-      - name: Setup python
-        uses: actions/setup-python@v1
+      - uses: actions/setup-node@v2
         with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - name: Cache conda
-        uses: actions/cache@v2
-        env:
-          # Increase this value to reset cache if environment.yaml has not changed
-          CACHE_NUMBER: 0
-        with:
-          path: ~/conda_pkgs_dir
-          key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('.github/workflows/update-template.yaml') }}
-      - name: Setup miniconda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-          channels: conda-forge,defaults
-          channel-priority: strict
-          show-channel-urls: true
-          auto-activate-base: false
-          use-only-tar-bz2: true
-      - name: Print conda env
-        shell: bash -l {0}
-        run: |
-          conda info
-          conda list
-      - name: Install nodejs
-        shell: bash -l {0}
-        run: |
-          conda install --yes nodejs
+          node-version: 14
       - name: Install update-template
-        shell: bash -l {0}
         run: |
           which npm
           npm install -g update-template
       - name: Run update template
-        shell: bash -l {0}
         run: |
           which npx
           npx update-template https://github.com/${{ env.TEMPLATE_REPO }}
