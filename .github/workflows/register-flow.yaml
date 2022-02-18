@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: 3.8
+  PYTHON_VERSION: "3.8"
   CONDA_ENV: harvester
   PREFECT_PROJECT: ooi-harvest
 
@@ -53,6 +53,8 @@ jobs:
           conda list
       - name: Run flow registration
         shell: bash -l {0}
+        env:
+          TASK_ROLE_ARN: ${{ secrets.TASK_ROLE_ARN }}
         run: |
           # Make prefect dir
           mkdir ~/.prefect
