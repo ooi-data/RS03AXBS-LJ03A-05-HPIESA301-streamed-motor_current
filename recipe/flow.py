@@ -1,6 +1,7 @@
 import os
 import yaml
 import datetime
+import copy
 from pathlib import Path
 from prefect import Flow
 from prefect.schedules import CronSchedule
@@ -15,6 +16,8 @@ CONFIG_PATH = BASE.joinpath(harvest_settings.github.defaults.config_path_str)
 RUN_OPTIONS = {
     'env': {
         'PREFECT__CLOUD__HEARTBEAT_MODE': 'thread',
+        'AWS_RETRY_MODE': 'adaptive',
+        'AWS_MAX_ATTEMPTS': '100',
     },
     'task_role_arn': os.environ.get('TASK_ROLE_ARN', None),
     'cpu': '2 vcpu',
@@ -39,7 +42,7 @@ flow_run_name = "-".join(
 schedule = CronSchedule(config_json['workflow_config']['schedule'])
 run_config = ECSRun(**RUN_OPTIONS)
 
-parent_run_opts = dict(**RUN_OPTIONS)
+parent_run_opts = dict(**copy.deepcopy(RUN_OPTIONS))
 parent_run_opts.update({'cpu': '0.5 vcpu', 'memory': '2 GB'})
 parent_run_config = ECSRun(**parent_run_opts)
 
